@@ -2,6 +2,8 @@ require 'tweetstream/client'
 require 'tweetstream/hash'
 require 'tweetstream/status'
 require 'tweetstream/user'
+require 'tweetstream/direct_message'
+require 'tweetstream/event'
 require 'tweetstream/daemon'
 
 module TweetStream
