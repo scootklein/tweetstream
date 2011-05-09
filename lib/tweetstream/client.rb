@@ -202,16 +202,16 @@ module TweetStream
     # received from the Twitter stream. For example:
     #
     #     @client = TweetStream::Client.new(auth)
-    #     @client.on_friends do |status|
+    #     @client.on_friends_list do |status|
     #       puts "#{status.user.screen_name} -- #{status.text}"
     #     end
     #
-    def on_friends(&block)
+    def on_friends_list(&block)
       if block_given?
-        @on_friends = block
+        @on_friends_list = block
         self
       else
-        @on_friends
+        @on_friends_list
       end
     end
 
@@ -304,7 +304,7 @@ module TweetStream
       status_proc = query_parameters.delete(:status) || self.on_status
       direct_message_proc = query_parameters.delete(:direct_message) || self.on_direct_message
       event_proc = query_parameters.delete(:event) || self.on_event
-      friends_proc = query_parameters.delete(:friends) || self.on_friends
+      friends_list_proc = query_parameters.delete(:friends) || self.on_friends_list
       inited_proc = query_parameters.delete(:inited) || self.on_inited
 
       uri = method == :get ? build_uri(path, query_parameters) : build_uri(path)
@@ -316,7 +316,8 @@ module TweetStream
         :method => method.to_s.upcase,
         :content => (method == :post ? build_post_body(query_parameters) : ''),
         :user_agent => 'TweetStream',
-        :on_inited => inited_proc
+        :on_inited => inited_proc,
+        :timeout => 90
       }
       jsonstream_opts[:auth] = "#{auth[:username]}:#{auth[:password]}" if auth[:type] == :basic
       jsonstream_opts[:oauth] = auth if auth[:type] == :oauth # auth hash has all keys and values just like twitter-stream needs them, no change required
@@ -336,11 +337,11 @@ module TweetStream
           hash = TweetStream::Hash.new(raw_hash)
 
           if hash[:delete] && hash[:delete][:status]
-            delete_proc.call(hash[:delete][:status][:id], hash[:delete][:status][:user_id]) if delete_proc.is_a?(Proc)
+            delete_proc.call(TweetStream::Delete.new(hash)) if delete_proc.is_a?(Proc)
           elsif hash[:limit] && hash[:limit][:track]
-            limit_proc.call(hash[:limit][:track]) if limit_proc.is_a?(Proc)
+            limit_proc.call(TweetStream::Limit.new(hash)) if limit_proc.is_a?(Proc)
           elsif hash[:friends]
-            friends_proc.call(hash[:friends]) if friends_proc.is_a?(Proc)
+            friends_list_proc.call(TweetStream::FriendsList.new(hash)) if friends_list_proc.is_a?(Proc)
           elsif hash[:text] && hash[:user]
             status_proc.call(TweetStream::Status.new(hash)) if status_proc.is_a?(Proc)
           elsif hash[:direct_message]
